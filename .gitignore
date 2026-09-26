@@ -1,0 +1,60 @@
+# Maven and build output
+target/
+*.class
+*.jar
+!mvnw
+!mvnw.cmd
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs and test reports
+*.log
+logs/
+surefire-reports/
+failsafe-reports/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+application-local.properties
+application-*.yml
+application-*.yaml
+
+# Generated metadata
+HELP.md
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Keep only the project README tracked
+*.md
+!README.md
