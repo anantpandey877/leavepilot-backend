@@ -3,6 +3,8 @@ package com.kpit.anant.leavepilot.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,8 +50,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.PENDING;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
-    private LocalDateTime createdAt;
+ @CreationTimestamp
+@Column(name = "created_at", nullable = false, updatable = false)
+private LocalDateTime createdAt;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private LeaveBalance leaveBalance;

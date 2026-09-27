@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: leavepilot-backend
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: leavepilot-backend
+
+  template:
+    metadata:
+      labels:
+        app: leavepilot-backend
+
+    spec:
+      containers:
+        - name: leavepilot-backend
+          image: leavepilot-backend:1.0
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8080

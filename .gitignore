@@ -58,3 +58,5 @@ Thumbs.db
 # Keep only the project README tracked
 *.md
 !README.md
+
+LeavePilot-Frontend/

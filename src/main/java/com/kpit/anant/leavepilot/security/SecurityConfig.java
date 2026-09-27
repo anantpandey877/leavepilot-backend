@@ -23,7 +23,7 @@ import com.kpit.anant.leavepilot.repository.UserRepository;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-    @Value("${app.cors.allowed-origin:http://localhost:5173}")
+    @Value("${app.cors.origin:http://localhost:5173}")
     private String allowedOrigin;
 
     @Bean
@@ -49,6 +49,7 @@ public class SecurityConfig {
                 // Kept permitAll for the legacy unchanged frontend; bearer tokens are still
                 // validated and available.
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
+          //      .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/**").permitAll().anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
