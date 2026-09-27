@@ -2,24 +2,43 @@ name: Deploy Azure
 
 on:
   workflow_dispatch:
+    inputs:
+      region:
+        description: "Azure deployment region"
+        required: true
+        type: choice
+        options:
+          - central
+          - south
+        default: central
+
+      reason:
+        description: "Deployment reason"
+        required: true
+        type: string
+        default: "Manual deployment"
+
+  push:
+    branches:
+      - main
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
 
-      - name: Build backend
-        run: mvn clean package -DskipTests
+      - name: Build and test
+        run: mvn clean verify
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -31,8 +50,51 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }} .
+          docker build \
+            -t leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }} \
+            .
 
       - name: Push Docker image
         run: |
-          docker push leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }}
+          docker push \
+            leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }}
+
+      - name: Select AKS cluster
+        id: cluster
+        run: |
+          if [ "${{ inputs.region }}" = "south" ]; then
+            echo "cluster=leavepilot-aks-south" >> "$GITHUB_OUTPUT"
+            echo "url=https://20-219-126-185.sslip.io/leavepilot/api/health" >> "$GITHUB_OUTPUT"
+          else
+            echo "cluster=leavepilot-aks" >> "$GITHUB_OUTPUT"
+            echo "url=https://135-235-252-64.sslip.io/leavepilot/api/health" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group LeavePilot-RG \
+            --name "${{ steps.cluster.outputs.cluster }}" \
+            --overwrite-existing
+
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/leavepilot-backend \
+            leavepilot-backend=leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }}
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status \
+            deployment/leavepilot-backend \
+            --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          curl --fail --silent --show-error \
+            "${{ steps.cluster.outputs.url }}"
+
+      - name: Deployment completed
+        run: |
+          echo "Azure deployment completed successfully."
+          echo "Region: ${{ inputs.region }}"
+          echo "Reason: ${{ inputs.reason }}"
