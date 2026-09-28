@@ -25,7 +25,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/employee")
-@PreAuthorize("!isAuthenticated() || hasRole('EMPLOYEE')")
+@PreAuthorize("hasRole('EMPLOYEE')")
 public class EmployeeController {
     private final LeaveService leaveService;
 

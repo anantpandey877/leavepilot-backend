@@ -17,7 +17,7 @@ import com.kpit.anant.leavepilot.service.UserService;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("!isAuthenticated() || hasRole('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
     private final UserService userService;
 

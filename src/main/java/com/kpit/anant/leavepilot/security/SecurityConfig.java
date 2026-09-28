@@ -46,11 +46,8 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Kept permitAll for the legacy unchanged frontend; bearer tokens are still
-                // validated and available.
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
-          //      .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/api/**").permitAll().anyRequest().authenticated())
+                    .requestMatchers("/api/**").authenticated().anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

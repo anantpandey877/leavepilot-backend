@@ -17,7 +17,7 @@ import com.kpit.anant.leavepilot.service.LeaveService;
 
 @RestController
 @RequestMapping("/api/manager")
-@PreAuthorize("!isAuthenticated() || hasRole('MANAGER')")
+@PreAuthorize("hasRole('MANAGER')")
 public class ManagerController {
     private final LeaveService leaveService;
 

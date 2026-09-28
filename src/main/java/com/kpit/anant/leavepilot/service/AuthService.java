@@ -36,7 +36,11 @@ public class AuthService {
         user.setFullName(request.fullName());
         user.setEmail(request.email());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setRole(parseRole(request.role()));
+        Role role = parseRole(request.role());
+        if (role == Role.ADMIN) {
+            throw new IllegalArgumentException("Admin registration is not allowed.");
+        }
+        user.setRole(role);
         user.setDepartment(parseDepartment(request.department()));
         user.setStatus(UserStatus.PENDING);
         users.save(user);
