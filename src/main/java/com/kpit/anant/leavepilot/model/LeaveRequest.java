@@ -44,6 +44,8 @@ public class LeaveRequest {
     @Column(length = 500)
     private String reason;
 
+    private Integer numberOfDays;
+
     @Enumerated(EnumType.STRING)
     private LeaveStatus status = LeaveStatus.PENDING;
 

@@ -1,6 +1,6 @@
 package com.kpit.anant.leavepilot.security;
 
-import java.util.List;
+import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,13 +23,15 @@ import com.kpit.anant.leavepilot.repository.UserRepository;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-    @Value("${app.cors.origin:http://localhost:5173}")
-    private String allowedOrigin;
+
+    @Value("${app.cors.origin}")
+    private String allowedOrigins;
 
     @Bean
-    UserDetailsService userDetailsService(UserRepository users) {
+    public UserDetailsService userDetailsService(UserRepository users) {
         return email -> users.findByEmail(email)
-                .map(user -> org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
+                .map(user -> org.springframework.security.core.userdetails.User
+                        .withUsername(user.getEmail())
                         .password(user.getPasswordHash())
                         .roles(user.getRole().name())
                         .build())
@@ -37,30 +39,85 @@ public class SecurityConfig {
     }
 
     @Bean
-    PasswordEncoder passwordEncoder() {
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
-        http.csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/**").authenticated().anyRequest().authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthenticationFilter jwtFilter) throws Exception {
+
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            .authorizeHttpRequests(auth -> auth
+
+                // Public APIs
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/api/health")
+                .permitAll()
+
+                // Admin APIs
+                .requestMatchers("/api/admin/**")
+                .hasRole("ADMIN")
+
+                // Manager APIs
+                .requestMatchers("/api/manager/**")
+                .hasAnyRole("MANAGER", "ADMIN")
+
+                // Everything else requires login
+                .anyRequest()
+                .authenticated())
+
+            .addFilterBefore(
+                    jwtFilter,
+                    UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(allowedOrigin));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        configuration.setAllowedOriginPatterns(
+                Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .toList());
+
+        configuration.setAllowedMethods(
+                Arrays.asList(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "OPTIONS"));
+
+        configuration.setAllowedHeaders(
+                Arrays.asList(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept",
+                        "Origin"));
+
+        configuration.setExposedHeaders(
+                Arrays.asList(
+                        "Authorization"));
+
         configuration.setAllowCredentials(false);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
