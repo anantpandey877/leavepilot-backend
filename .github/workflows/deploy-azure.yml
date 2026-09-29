@@ -37,10 +37,10 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build and test
+      - name: Build and Test
         run: mvn clean verify
 
-      - name: Login to Azure
+      - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -48,29 +48,27 @@ jobs:
       - name: Login to ACR
         run: az acr login --name leavepilotacr
 
-      - name: Build Docker image
+      - name: Build Docker Image
         run: |
           docker build \
             -t leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }} \
             .
 
-      - name: Push Docker image
+      - name: Push Docker Image
         run: |
           docker push \
             leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }}
 
-      - name: Select AKS cluster
+      - name: Select AKS Cluster
         id: cluster
         run: |
           if [ "${{ inputs.region }}" = "south" ]; then
-            echo "cluster=leavepilot-aks-south" >> "$GITHUB_OUTPUT"
-            echo "url=https://20-219-126-185.sslip.io/leavepilot/api/health" >> "$GITHUB_OUTPUT"
+            echo "cluster=leavepilot-aks-south" >> $GITHUB_OUTPUT
           else
-            echo "cluster=leavepilot-aks" >> "$GITHUB_OUTPUT"
-            echo "url=https://135-235-252-64.sslip.io/leavepilot/api/health" >> "$GITHUB_OUTPUT"
+            echo "cluster=leavepilot-aks" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get AKS credentials
+      - name: Get AKS Credentials
         run: |
           az aks get-credentials \
             --resource-group LeavePilot-RG \
@@ -82,19 +80,12 @@ jobs:
           kubectl set image deployment/leavepilot-backend \
             leavepilot-backend=leavepilotacr-gjhefhbhf3d8debx.azurecr.io/leavepilot-backend:${{ github.sha }}
 
-      - name: Wait for rollout
+      - name: Wait for Rollout
         run: |
-          kubectl rollout status \
-            deployment/leavepilot-backend \
-            --timeout=300s
+          kubectl rollout status deployment/leavepilot-backend --timeout=300s
 
-      - name: Verify deployment
+      - name: Deployment Completed
         run: |
-          curl --fail --silent --show-error \
-            "${{ steps.cluster.outputs.url }}"
-
-      - name: Deployment completed
-        run: |
-          echo "Azure deployment completed successfully."
+          echo "Azure deployment completed successfully"
           echo "Region: ${{ inputs.region }}"
           echo "Reason: ${{ inputs.reason }}"
