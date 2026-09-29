@@ -24,8 +24,8 @@ import com.kpit.anant.leavepilot.repository.UserRepository;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Value("${app.cors.origin}")
-    private String allowedOrigins;
+  @Value("${app.cors.origin:http://localhost:5173}")
+private String allowedOrigins;
 
     @Bean
     public UserDetailsService userDetailsService(UserRepository users) {
