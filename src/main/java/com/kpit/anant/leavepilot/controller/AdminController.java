@@ -33,6 +33,7 @@ public class AdminController {
     @GetMapping("/users")
     public List<UserResponse> users() {
         return userService.allUsers().stream().map(UserResponse::from).toList();
+        //rest
     }
 
     @PutMapping("/users/{id}/approve")
