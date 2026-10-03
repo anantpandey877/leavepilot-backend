@@ -47,3 +47,18 @@ jobs:
           docker build -t $ECR_REPOSITORY .
           docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+                - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Create kubeconfig
+        run: |
+          cat <<EOF > kubeconfig
+          ${{ secrets.KUBE_CONFIG }}
+          EOF
+
+      - name: Restart Deployment
+        env:
+          KUBECONFIG: kubeconfig
+        run: |
+          kubectl rollout restart deployment/leavepilot-backend
