@@ -8,6 +8,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: leavepilot-backend
+  EKS_CLUSTER_NAME: leavepilot-eks-east
 
 jobs:
   build-and-deploy:
@@ -51,26 +52,20 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Create kubeconfig
+      - name: Configure EKS Access
         run: |
-          cat <<EOF > kubeconfig
-          ${{ secrets.KUBE_CONFIG }}
-          EOF
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER_NAME
 
       - name: Verify Cluster Connection
-        env:
-          KUBECONFIG: kubeconfig
         run: |
           kubectl get nodes
 
       - name: Restart Deployment
-        env:
-          KUBECONFIG: kubeconfig
         run: |
           kubectl rollout restart deployment/leavepilot-backend
 
       - name: Wait For Rollout
-        env:
-          KUBECONFIG: kubeconfig
         run: |
           kubectl rollout status deployment/leavepilot-backend --timeout=300s
