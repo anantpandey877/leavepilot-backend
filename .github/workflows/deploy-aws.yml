@@ -1,6 +1,23 @@
-name: Build, Push and Deploy to EKS
+name: Deploy AWS
 
 on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "AWS deployment region"
+        required: true
+        type: choice
+        options:
+          - east
+          - west
+        default: east
+
+      reason:
+        description: "Deployment reason"
+        required: true
+        type: string
+        default: "Manual deployment"
+
   push:
     branches:
       - aws-main
@@ -8,7 +25,6 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: leavepilot-backend
-  EKS_CLUSTER_NAME: leavepilot-eks-east
 
 jobs:
   build-and-deploy:
@@ -18,14 +34,14 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: "21"
-          distribution: "temurin"
 
       - name: Build Application
         run: mvn clean package -DskipTests
@@ -35,7 +51,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -49,14 +65,22 @@ jobs:
           docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+      - name: Select EKS Cluster
+        id: cluster
+        run: |
+          if [ "${{ github.event.inputs.region }}" = "west" ]; then
+            echo "region=us-west-2" >> $GITHUB_OUTPUT
+            echo "cluster=leavepilot-eks-west" >> $GITHUB_OUTPUT
+          else
+            echo "region=us-east-1" >> $GITHUB_OUTPUT
+            echo "cluster=leavepilot-eks-east" >> $GITHUB_OUTPUT
+          fi
 
       - name: Configure EKS Access
         run: |
           aws eks update-kubeconfig \
-            --region $AWS_REGION \
-            --name $EKS_CLUSTER_NAME
+            --region "${{ steps.cluster.outputs.region }}" \
+            --name "${{ steps.cluster.outputs.cluster }}"
 
       - name: Verify Cluster Connection
         run: |
@@ -69,3 +93,10 @@ jobs:
       - name: Wait For Rollout
         run: |
           kubectl rollout status deployment/leavepilot-backend --timeout=300s
+
+      - name: Deployment Completed
+        run: |
+          echo "AWS deployment completed successfully"
+          echo "Cluster: ${{ steps.cluster.outputs.cluster }}"
+          echo "Region: ${{ steps.cluster.outputs.region }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
