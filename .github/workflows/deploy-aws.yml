@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       region:
-        description: "AWS deployment region"
+        description: "Deployment target"
         required: true
         type: choice
         options:
+          - both
           - east
           - west
-        default: east
+        default: both
 
       reason:
         description: "Deployment reason"
@@ -57,7 +58,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, Tag and Push Image
+      - name: Build and Push Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
@@ -65,38 +66,39 @@ jobs:
           docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Select EKS Cluster
-        id: cluster
-        run: |
-          if [ "${{ github.event.inputs.region }}" = "west" ]; then
-            echo "region=us-west-2" >> $GITHUB_OUTPUT
-            echo "cluster=leavepilot-eks-west" >> $GITHUB_OUTPUT
-          else
-            echo "region=us-east-1" >> $GITHUB_OUTPUT
-            echo "cluster=leavepilot-eks-east" >> $GITHUB_OUTPUT
-          fi
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
 
-      - name: Configure EKS Access
+      # EAST DEPLOYMENT
+
+      - name: Deploy East
+        if: github.event_name == 'push' || github.event.inputs.region == 'east' || github.event.inputs.region == 'both'
         run: |
           aws eks update-kubeconfig \
-            --region "${{ steps.cluster.outputs.region }}" \
-            --name "${{ steps.cluster.outputs.cluster }}"
+            --region us-east-1 \
+            --name leavepilot-eks-east
 
-      - name: Verify Cluster Connection
-        run: |
           kubectl get nodes
 
-      - name: Restart Deployment
-        run: |
           kubectl rollout restart deployment/leavepilot-backend
 
-      - name: Wait For Rollout
-        run: |
           kubectl rollout status deployment/leavepilot-backend --timeout=300s
 
-      - name: Deployment Completed
+      # WEST DEPLOYMENT
+
+      - name: Deploy West
+        if: github.event_name == 'push' || github.event.inputs.region == 'west' || github.event.inputs.region == 'both'
+        run: |
+          aws eks update-kubeconfig \
+            --region us-west-2 \
+            --name leavepilot-eks-west
+
+          kubectl get nodes
+
+          kubectl rollout restart deployment/leavepilot-backend
+
+          kubectl rollout status deployment/leavepilot-backend --timeout=300s
+
+      - name: Deployment Complete
         run: |
           echo "AWS deployment completed successfully"
-          echo "Cluster: ${{ steps.cluster.outputs.cluster }}"
-          echo "Region: ${{ steps.cluster.outputs.region }}"
-          echo "Reason: ${{ github.event.inputs.reason }}"
